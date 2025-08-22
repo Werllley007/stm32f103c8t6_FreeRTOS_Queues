@@ -61,29 +61,33 @@ static void MX_USART2_UART_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-void TaskSend(void *pvParams){
-	uint32_t u32Send = 0;
+void Task1(void *pvParams){
+	char *pcTaskHello = "Hello from Task1\r\n";
 
 	while(1){
-		if(xQueueSend(xQueue, &u32Send, (TickType_t)0) == pdFAIL){
-			Error_Handler();
-		}
-		u32Send++;
-		vTaskDelay(pdMS_TO_TICKS(1000));
+		xQueueSend(xQueue,&pcTaskHello,portMAX_DELAY);
 	}
-	vTaskDelete(NULL);
+	//vTaskDelete(NULL);
 }
 
-void TaskReceive(void *pvParams){
-	uint32_t u32Recv;
+void Task2(void *pvParams){
+	char *pcTaskHello = "Hello from Task2\r\n";
 
 	while(1){
-		xQueueReceive(xQueue, &u32Recv, portMAX_DELAY);
-		printf("Receive value %lu\r\n", u32Recv);
+		xQueueSend(xQueue, &pcTaskHello, portMAX_DELAY);
 	}
-	vTaskDelete(NULL);
+	//vTaskDelete(NULL);
 }
 
+void Task3(void *pvParams){
+	char *pcMessage;
+
+	while(1){
+		xQueueReceive(xQueue, &pcMessage, portMAX_DELAY);
+		printf(pcMessage);
+	}
+	//vTaskDelete(NULL);
+}
 
 /* USER CODE END 0 */
 
@@ -95,10 +99,8 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-	TaskHandle_t TaskHandle1, TaskHandle2;
+	TaskHandle_t TaskHandle1, TaskHandle2, TaskHandle3;
 	BaseType_t 	xReturn;
-
-	//BaseType_t uxStackDepth = (128 + 304) / sizeof(BaseType_t);
 	BaseType_t uxStackDepth = 256;
   /* USER CODE END 1 */
 
@@ -123,17 +125,15 @@ int main(void)
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
 
-  xReturn = xTaskCreate(TaskSend, "TaskSend", uxStackDepth, NULL, 1, &TaskHandle1);
+  xReturn = xTaskCreate(Task1, "Task1", uxStackDepth, NULL, 1, &TaskHandle1);
   if(xReturn != pdPASS){
 	   Error_Handler();
   }
+  xReturn = xTaskCreate(Task2, "Task2", uxStackDepth, NULL, 1, &TaskHandle2);
 
-  xReturn = xTaskCreate(TaskReceive, "TaskReceive", uxStackDepth, NULL, 1, &TaskHandle2);
-  if(xReturn != pdPASS){
-	  Error_Handler();
-  }
+  xReturn = xTaskCreate(Task3, "Task3", uxStackDepth, NULL, 2, &TaskHandle3);
 
-  xQueue = xQueueCreate(10, sizeof(uint32_t));
+  xQueue = xQueueCreate(10, sizeof(char*));
 
   /* USER CODE END 2 */
 
