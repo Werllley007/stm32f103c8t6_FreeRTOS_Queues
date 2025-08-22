@@ -30,7 +30,10 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-
+typedef struct{
+	GPIO_TypeDef *GPIOx;
+	uint32_t Pin;
+}gpio_data_t;
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -61,30 +64,32 @@ static void MX_USART2_UART_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-void Task1(void *pvParams){
-	char *pcTaskHello = "Hello from Task1\r\n";
+void TaskBtn(void *pvParams){
+	gpio_data_t *Led;
+
+	Led = pvPortMalloc(sizeof(gpio_data_t));
+	Led->GPIOx = LED_GPIO_Port;
+	Led->Pin = LED_Pin;
 
 	while(1){
-		xQueueSend(xQueue,&pcTaskHello,portMAX_DELAY);
+		if(HAL_GPIO_ReadPin(BTN_GPIO_Port, BTN_Pin) == GPIO_PIN_RESET){
+			xQueueSend(xQueue, &Led, 0);
+			vTaskDelay(pdMS_TO_TICKS(250));
+			while(HAL_GPIO_ReadPin(BTN_GPIO_Port, BTN_Pin) == GPIO_PIN_RESET){
+				vTaskDelay(pdMS_TO_TICKS(10));
+			}
+			vTaskDelay(pdMS_TO_TICKS(50));
+		}
 	}
 	//vTaskDelete(NULL);
 }
 
-void Task2(void *pvParams){
-	char *pcTaskHello = "Hello from Task2\r\n";
+void TaskLed(void *pvParams){
+	gpio_data_t *Led;
 
 	while(1){
-		xQueueSend(xQueue, &pcTaskHello, portMAX_DELAY);
-	}
-	//vTaskDelete(NULL);
-}
-
-void Task3(void *pvParams){
-	char *pcMessage;
-
-	while(1){
-		xQueueReceive(xQueue, &pcMessage, portMAX_DELAY);
-		printf(pcMessage);
+		xQueueReceive(xQueue, &Led, portMAX_DELAY);
+		HAL_GPIO_TogglePin(Led->GPIOx, Led->Pin);
 	}
 	//vTaskDelete(NULL);
 }
@@ -99,7 +104,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-	TaskHandle_t TaskHandle1, TaskHandle2, TaskHandle3;
+	TaskHandle_t TaskHandle1, TaskHandle2;
 	BaseType_t 	xReturn;
 	BaseType_t uxStackDepth = 256;
   /* USER CODE END 1 */
@@ -125,15 +130,16 @@ int main(void)
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
 
-  xReturn = xTaskCreate(Task1, "Task1", uxStackDepth, NULL, 1, &TaskHandle1);
+  xReturn = xTaskCreate(TaskBtn, "TaskBtn", uxStackDepth, NULL, 1, &TaskHandle1);
   if(xReturn != pdPASS){
 	   Error_Handler();
   }
-  xReturn = xTaskCreate(Task2, "Task2", uxStackDepth, NULL, 1, &TaskHandle2);
+  xReturn = xTaskCreate(TaskLed, "TaskLed", uxStackDepth, NULL, 1, &TaskHandle2);
+  if(xReturn != pdPASS){
+  	   Error_Handler();
+  }
 
-  xReturn = xTaskCreate(Task3, "Task3", uxStackDepth, NULL, 2, &TaskHandle3);
-
-  xQueue = xQueueCreate(10, sizeof(char*));
+  xQueue = xQueueCreate(3, sizeof(gpio_data_t));
 
   /* USER CODE END 2 */
 
@@ -244,9 +250,15 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin : LED_Pin */
   GPIO_InitStruct.Pin = LED_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(LED_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : BTN_Pin */
+  GPIO_InitStruct.Pin = BTN_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(BTN_GPIO_Port, &GPIO_InitStruct);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
 
