@@ -47,9 +47,6 @@
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-TickType_t xTickHook = 0;
-UBaseType_t xWaterMark = 0;
-
 QueueHandle_t xQueue = NULL;
 /* USER CODE END PV */
 
@@ -63,29 +60,6 @@ static void MX_USART2_UART_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-/*
-void LedON(){
-	char msg[100];
-	sprintf(msg, "LED ON");
-	HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
-	HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
-	HAL_Delay(250);
-}
-
-void LedOFF(){
-	char msg[100];
-	sprintf(msg, "LED OFF");
-	HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_RESET);
-	HAL_UART_Transmit(&huart2, (uint8_t*)msg, strlen(msg), HAL_MAX_DELAY);
-	HAL_Delay(250);
-}
-
-void LedToggle(){
-	HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
-	HAL_Delay(250);
-}
-*/
-
 
 void TaskSend(void *pvParams){
 	uint32_t u32Send = 0;
