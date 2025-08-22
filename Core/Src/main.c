@@ -50,7 +50,14 @@ typedef struct{
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-QueueHandle_t xQueue = NULL;
+TickType_t xTickHook = 0;
+UBaseType_t xWaterMark = 0;
+
+QueueHandle_t xQueue1 = NULL;
+QueueHandle_t xQueue2 = NULL;
+QueueHandle_t xQueue3 = NULL;
+
+QueueSetHandle_t xQueueSet = NULL;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -64,16 +71,16 @@ static void MX_USART2_UART_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-void TaskBtn(void *pvParams){
-	gpio_data_t *Led;
+void Led3On(){
+	HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, GPIO_PIN_SET);
+}
 
-	Led = pvPortMalloc(sizeof(gpio_data_t));
-	Led->GPIOx = LED_GPIO_Port;
-	Led->Pin = LED_Pin;
+void TaskMenu(void *pvParams){
+	char *pcMenu = "Menu\r\n";
 
 	while(1){
 		if(HAL_GPIO_ReadPin(BTN_GPIO_Port, BTN_Pin) == GPIO_PIN_RESET){
-			xQueueSend(xQueue, &Led, 0);
+			xQueueSend(xQueue1, &pcMenu, 0);
 			vTaskDelay(pdMS_TO_TICKS(250));
 			while(HAL_GPIO_ReadPin(BTN_GPIO_Port, BTN_Pin) == GPIO_PIN_RESET){
 				vTaskDelay(pdMS_TO_TICKS(10));
@@ -84,14 +91,27 @@ void TaskBtn(void *pvParams){
 	//vTaskDelete(NULL);
 }
 
-void TaskLed(void *pvParams){
-	gpio_data_t *Led;
+void TaskPrinter(void *pvParams){
+	char *pcMessage;
+	QueueSetMemberHandle_t xActiveMember;
+	xQueueSet = xQueueCreateSet(3+3+3);
+
+	xQueueAddToSet(xQueue1,xQueueSet);
+	xQueueAddToSet(xQueue2,xQueueSet);
 
 	while(1){
-		xQueueReceive(xQueue, &Led, portMAX_DELAY);
-		HAL_GPIO_TogglePin(Led->GPIOx, Led->Pin);
+		xActiveMember = xQueueSelectFromSet(xQueueSet, portMAX_DELAY);
+		xQueueReceive((QueueHandle_t)xActiveMember, &pcMessage, (TickType_t)0);
+		printf(pcMessage);
 	}
 	//vTaskDelete(NULL);
+}
+
+/* Hooks */
+
+void vApplicationStackOverflowHook( TaskHandle_t xTask, char * pcTaskName ){
+	Led3On();
+	Error_Handler();
 }
 
 /* USER CODE END 0 */
@@ -130,17 +150,17 @@ int main(void)
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
 
-  xReturn = xTaskCreate(TaskBtn, "TaskBtn", uxStackDepth, NULL, 1, &TaskHandle1);
+  xReturn = xTaskCreate(TaskMenu, "TaskMenu", uxStackDepth, NULL, 1, &TaskHandle1);
   if(xReturn != pdPASS){
 	   Error_Handler();
   }
-  xReturn = xTaskCreate(TaskLed, "TaskLed", uxStackDepth, NULL, 1, &TaskHandle2);
+  xReturn = xTaskCreate(TaskPrinter, "TaskPrinter", uxStackDepth, NULL, 1, &TaskHandle2);
   if(xReturn != pdPASS){
   	   Error_Handler();
   }
 
-  xQueue = xQueueCreate(3, sizeof(gpio_data_t));
-
+  xQueue1 = xQueueCreate(3, sizeof(char*));
+  xQueue2 = xQueueCreate(3, sizeof(char*));
   /* USER CODE END 2 */
 
   /* Infinite loop */

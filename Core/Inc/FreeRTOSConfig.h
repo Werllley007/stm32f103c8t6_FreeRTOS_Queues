@@ -102,6 +102,7 @@ extern uint32_t SystemCoreClock;
 #define configIDLE_SHOULD_YIELD							1
 #define configTASK_NOTIFICATION_ARRAY_ENTRIES      		1
 #define configQUEUE_REGISTRY_SIZE                  		0
+#define configUSE_QUEUE_SETS                  			1
 #define configENABLE_BACKWARD_COMPATIBILITY         	0
 #define configNUM_THREAD_LOCAL_STORAGE_POINTERS    		0
 #define configUSE_MINI_LIST_ITEM                   		1
@@ -176,7 +177,7 @@ See http://www.FreeRTOS.org/RTOS-Cortex-M3-M4.html. */
  * configCHECK_FOR_STACK_OVERFLOW is set to 1. See
  * https://www.freertos.org/Stacks-and-stack-overflow-checking.html  Defaults to
  * 0 if left undefined. */
-#define configCHECK_FOR_STACK_OVERFLOW        			0
+#define configCHECK_FOR_STACK_OVERFLOW        			2
 
 
 #define configGENERATE_RUN_TIME_STATS         			0
