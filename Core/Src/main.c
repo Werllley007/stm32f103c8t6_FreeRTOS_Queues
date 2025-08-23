@@ -26,6 +26,7 @@
 #include "queue.h"
 #include <string.h>
 #include <stdio.h>
+#include <portmacro.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -64,24 +65,24 @@ static void MX_USART2_UART_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-void TaskBtn(void *pvParams){
-	gpio_data_t *Led;
+/* CallBacks */
 
-	Led = pvPortMalloc(sizeof(gpio_data_t));
-	Led->GPIOx = LED_GPIO_Port;
-	Led->Pin = LED_Pin;
+/** Callbacks **/
+gpio_data_t Led = {
+		.GPIOx = LED_GPIO_Port,
+		.Pin = LED_Pin
+};
 
-	while(1){
-		if(HAL_GPIO_ReadPin(BTN_GPIO_Port, BTN_Pin) == GPIO_PIN_RESET){
-			xQueueSend(xQueue, &Led, 0);
-			vTaskDelay(pdMS_TO_TICKS(250));
-			while(HAL_GPIO_ReadPin(BTN_GPIO_Port, BTN_Pin) == GPIO_PIN_RESET){
-				vTaskDelay(pdMS_TO_TICKS(10));
-			}
-			vTaskDelay(pdMS_TO_TICKS(50));
-		}
+
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin){
+	gpio_data_t *p = &Led;
+	BaseType_t pxHigherTaskWoken = pdFALSE;
+
+	xQueueSendFromISR(xQueue, &p, &pxHigherTaskWoken);
+
+	if (pxHigherTaskWoken == pdTRUE){
+		portYIELD_FROM_ISR(pxHigherTaskWoken);
 	}
-	//vTaskDelete(NULL);
 }
 
 void TaskLed(void *pvParams){
@@ -91,7 +92,6 @@ void TaskLed(void *pvParams){
 		xQueueReceive(xQueue, &Led, portMAX_DELAY);
 		HAL_GPIO_TogglePin(Led->GPIOx, Led->Pin);
 	}
-	//vTaskDelete(NULL);
 }
 
 /* USER CODE END 0 */
@@ -104,7 +104,6 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-	TaskHandle_t TaskHandle1, TaskHandle2;
 	BaseType_t 	xReturn;
 	BaseType_t uxStackDepth = 256;
   /* USER CODE END 1 */
@@ -130,16 +129,12 @@ int main(void)
   MX_USART2_UART_Init();
   /* USER CODE BEGIN 2 */
 
-  xReturn = xTaskCreate(TaskBtn, "TaskBtn", uxStackDepth, NULL, 1, &TaskHandle1);
-  if(xReturn != pdPASS){
-	   Error_Handler();
-  }
-  xReturn = xTaskCreate(TaskLed, "TaskLed", uxStackDepth, NULL, 1, &TaskHandle2);
+  xReturn = xTaskCreate(TaskLed, "TaskLed", uxStackDepth, NULL, 1, NULL);
   if(xReturn != pdPASS){
   	   Error_Handler();
   }
 
-  xQueue = xQueueCreate(3, sizeof(gpio_data_t));
+  xQueue = xQueueCreate(3, sizeof(gpio_data_t*));
 
   /* USER CODE END 2 */
 
@@ -256,9 +251,13 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin : BTN_Pin */
   GPIO_InitStruct.Pin = BTN_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(BTN_GPIO_Port, &GPIO_InitStruct);
+
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 5, 0);
+  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
 
